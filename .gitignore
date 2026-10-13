@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+.venv/
+venv/
+env/
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+pip-wheel-metadata/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local databases and runtime data
+*.sqlite3
+*.db
+*.log
+
+# Coverage / tooling
+.coverage
+.coverage.*
+htmlcov/
+.pytype/
+
+# Build / dist artifacts
+build/
+dist/
+out/
+*.egg
+*.whl
+*.tar.gz
+*.zip
+
+# Node / frontend / extension artifacts
+node_modules/
+.npm/
+package-lock.json
+*.vsix
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Service-specific local folders
+services/**/.venv/
+services/**/__pycache__/
+services/**/.pytest_cache/
+services/**/.mypy_cache/
+services/**/.env
+services/**/tmp/
+services/**/tmp/
+
+# Local scan outputs and generated reports
+scan-results/
+reports/
+artifacts/
+*.report.json
+*.report.md
+
+# OS / temp
+*.tmp
+*~

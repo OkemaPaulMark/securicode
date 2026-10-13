@@ -1,0 +1,154 @@
+{
+  "name": "securecode",
+  "displayName": "SecureCode",
+  "description": "AI-powered secure code review, inline — findings, remediation, and an AI security agent backed by the SecureCode platform API.",
+  "version": "0.0.1",
+  "publisher": "securecode",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "securecode",
+          "title": "SecureCode",
+          "icon": "media/activity-bar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "securecode": [
+        {
+          "type": "webview",
+          "id": "securecode.overview",
+          "name": "Overview"
+        },
+        {
+          "id": "securecode.findings",
+          "name": "Findings"
+        },
+        {
+          "id": "securecode.dependencies",
+          "name": "Dependencies",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "securecode.secrets",
+          "name": "Secrets",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "securecode.findings",
+        "contents": "No security scan yet.\nAnalyze this workspace to discover security vulnerabilities.\n[Scan Workspace](command:securecode.scanWorkspace)",
+        "when": "!securecode.hasScanned"
+      },
+      {
+        "view": "securecode.dependencies",
+        "contents": "No scan yet.\n[Scan Workspace](command:securecode.scanWorkspace)",
+        "when": "!securecode.hasScanned"
+      },
+      {
+        "view": "securecode.secrets",
+        "contents": "No scan yet.\n[Scan Workspace](command:securecode.scanWorkspace)",
+        "when": "!securecode.hasScanned"
+      }
+    ],
+    "commands": [
+      { "command": "securecode.login", "title": "SecureCode: Login" },
+      { "command": "securecode.logout", "title": "SecureCode: Logout" },
+      { "command": "securecode.scanWorkspace", "title": "SecureCode: Scan Workspace", "icon": "$(search-fuzzy)" },
+      { "command": "securecode.scanFile", "title": "SecureCode: Scan Current File" },
+      { "command": "securecode.scanSelection", "title": "SecureCode: Scan Selection" },
+      { "command": "securecode.openDashboard", "title": "SecureCode: Open Security Dashboard" },
+      { "command": "securecode.showFindings", "title": "SecureCode: Open Findings" },
+      { "command": "securecode.askAgent", "title": "SecureCode: Ask Security Agent" },
+      { "command": "securecode.explainWithAI", "title": "SecureCode: Explain Security Risk" },
+      { "command": "securecode.suggestFix", "title": "SecureCode: Suggest Secure Fix" },
+      { "command": "securecode.rescanFinding", "title": "SecureCode: Rescan Finding" },
+      { "command": "securecode.generateReport", "title": "SecureCode: Generate Security Report" }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "securecode.scanWorkspace",
+          "when": "view == securecode.findings",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "securecode.explainWithAI",
+          "when": "view == securecode.findings && viewItem == finding",
+          "group": "1_ai@1"
+        },
+        {
+          "command": "securecode.suggestFix",
+          "when": "view == securecode.findings && viewItem == finding",
+          "group": "1_ai@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "securecode.contextMenu",
+          "group": "1_securecode"
+        }
+      ],
+      "securecode.contextMenu": [
+        { "command": "securecode.scanSelection", "group": "1_scan@1" },
+        { "command": "securecode.explainWithAI", "group": "2_ai@1" },
+        { "command": "securecode.askAgent", "group": "2_ai@2" },
+        { "command": "securecode.suggestFix", "group": "2_ai@3" }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "securecode.contextMenu",
+        "label": "SecureCode"
+      }
+    ],
+    "colors": [
+      { "id": "securecode.critical", "description": "SecureCode critical severity", "defaults": { "dark": "#f14c4c", "light": "#cd3131", "highContrast": "#f14c4c" } },
+      { "id": "securecode.high", "description": "SecureCode high severity", "defaults": { "dark": "#e2913a", "light": "#bf6a02", "highContrast": "#e2913a" } },
+      { "id": "securecode.medium", "description": "SecureCode medium severity", "defaults": { "dark": "#dbb440", "light": "#9e7b13", "highContrast": "#dbb440" } },
+      { "id": "securecode.low", "description": "SecureCode low severity", "defaults": { "dark": "#4f9cd6", "light": "#0969da", "highContrast": "#4f9cd6" } },
+      { "id": "securecode.success", "description": "SecureCode success/no-issues", "defaults": { "dark": "#3fb950", "light": "#1a7f37", "highContrast": "#3fb950" } }
+    ],
+    "configuration": {
+      "title": "SecureCode",
+      "properties": {
+        "securecode.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Base URL of the SecureCode Django API."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
+  }
+}

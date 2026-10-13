@@ -1,0 +1,15 @@
+{
+  "id": "string",
+  "project_id": "string",
+  "scan_id": "string",
+  "title": "string",
+  "severity": "critical|high|medium|low",
+  "file": "string",
+  "line": 0,
+  "evidence": "string",
+  "owasp_category": "string",
+  "cwe": "string",
+  "recommendation": "string",
+  "source": "bandit|semgrep|osv|secret|manual",
+  "verdict": "true_positive|false_positive|needs_manual_review"
+}
