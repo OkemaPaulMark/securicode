@@ -1,4 +1,5 @@
-"""Gateway service entry point — authentication, request routing, and API entry point."""
+"""Gateway service entry point — authentication, request routing, and API entry point (API Gateway &
+Identity Service). OpenAPI 3 docs at /docs and /openapi.json."""
 from __future__ import annotations
 
 import os
@@ -7,13 +8,25 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import select, text
 
-from . import identity, routing
+from . import admin_routes, auth_routes, internal_routes, proxy
 from .config import Settings
-from .db import make_sessionmaker
+from .db import User, make_sessionmaker
+from .security import hash_password
 
 VERSION = os.environ.get("APP_VERSION", "dev")
+
+
+def bootstrap_admin(sessionmaker, email: str, password: str) -> None:
+    """Creates the first administrator from ADMIN_EMAIL / ADMIN_PASSWORD if that account does not exist."""
+    if not email or not password:
+        return
+    with sessionmaker() as db:
+        if db.scalar(select(User).where(User.email == email.lower())) is None:
+            db.add(User(email=email.lower(), name="Administrator", password_hash=hash_password(password),
+                        role="admin", email_verified=True))
+            db.commit()
 
 
 def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
@@ -23,14 +36,15 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.sessionmaker = make_sessionmaker(settings.database_url)
-        identity.bootstrap_admin(app.state.sessionmaker, settings.admin_username,
-                                 settings.admin_email, settings.admin_password)
+        bootstrap_admin(app.state.sessionmaker, settings.admin_email, settings.admin_password)
         async with httpx.AsyncClient(transport=transport, follow_redirects=False) as client:
             app.state.http = client
             yield
 
-    app = FastAPI(title="Gateway Service", version=VERSION, lifespan=lifespan)
+    app = FastAPI(title="Securicode Gateway", version=VERSION, lifespan=lifespan,
+                  description="API Gateway & Identity Service: authentication, accounts and routing.")
     app.state.settings = settings
+    app.state.outbox = [] if settings.app_env == "test" else None
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"],
                        allow_headers=["*"], allow_credentials="*" not in settings.cors_origins)
 
@@ -44,8 +58,12 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             db.execute(text("SELECT 1"))
         return {"status": "ready"}
 
-    app.include_router(identity.router)   # must come before the catch-all proxy
-    app.include_router(routing.router)
+    # Order matters: local routers first, the catch-all proxy last.
+    app.include_router(auth_routes.router)
+    app.include_router(auth_routes.pages)
+    app.include_router(admin_routes.router)
+    app.include_router(internal_routes.router)
+    app.include_router(proxy.router)
     return app
 
 
