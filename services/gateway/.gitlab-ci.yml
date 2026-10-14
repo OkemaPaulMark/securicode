@@ -1,0 +1,73 @@
+# Gateway service pipeline. Included from the root .gitlab-ci.yml.
+# Jobs are prefixed gw: and variables GW_ so they never clash with the other services.
+#
+# CI/CD variables (GitLab: Settings > CI/CD > Variables):
+#   JWT_SECRET      masked + protected   (openssl rand -hex 32)
+#   ADMIN_EMAIL     protected            first admin account (username: admin)
+#   ADMIN_PASSWORD  masked + protected
+#   PROJECT_SERVICE_URL / SCAN_SERVICE_URL / AI_SERVICE_URL / REPORTING_SERVICE_URL
+#                   e.g. http://10.10.1.3:8001 — add each once that teammate's service is deployed
+
+variables:
+  GW_DIR: services/gateway
+  GW_IMAGE: securicode/gateway
+  GW_CONTAINER: securicode-gateway
+  GW_HOST: worker1
+  GW_PORT: "8000"
+
+.gw-base:
+  # tags: [cloudlab-runner-23]   # uncomment if the runner does not run untagged jobs
+  before_script:
+    - chmod +x "$GW_DIR/ci/ci.sh"
+
+.gw-on-change:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: [services/gateway/**/*]
+    - if: $CI_COMMIT_BRANCH
+      changes: [services/gateway/**/*]
+
+.gw-on-main:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: [services/gateway/**/*]
+
+gw:test:
+  extends: [.gw-base, .gw-on-change]
+  stage: test
+  script:
+    - "$GW_DIR/ci/ci.sh test"          # ruff + pytest in docker build --target test; any failure stops here
+
+gw:build:
+  extends: [.gw-base, .gw-on-main]
+  stage: build
+  needs: ["gw:test"]
+  script:
+    - "$GW_DIR/ci/ci.sh build"         # image securicode/gateway:<commit short SHA> on worker1
+
+gw:deploy:
+  extends: [.gw-base, .gw-on-main]
+  stage: deploy
+  needs: ["gw:build"]
+  resource_group: gateway
+  environment:
+    name: gateway
+    url: http://$GW_HOST:$GW_PORT/docs
+  script:
+    - "$GW_DIR/ci/ci.sh deploy"        # waits for HEALTHCHECK, auto-rolls back if unhealthy
+    - "$GW_DIR/ci/ci.sh status"
+
+gw:rollback:
+  extends: [.gw-base]
+  stage: deploy
+  needs: ["gw:deploy"]
+  resource_group: gateway
+  environment:
+    name: gateway
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: [services/gateway/**/*]
+      when: manual                     # a person decides when production goes backwards
+  allow_failure: true
+  script:
+    - "$GW_DIR/ci/ci.sh rollback"      # optional variable ROLLBACK_TAG=<short sha>

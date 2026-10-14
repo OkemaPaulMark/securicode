@@ -1,0 +1,9 @@
+# Securicode — root pipeline. Each service owns its own file; add yours to the include list.
+stages: [test, build, deploy]
+
+include:
+  - local: services/gateway/.gitlab-ci.yml
+  # - local: services/project/.gitlab-ci.yml
+  # - local: services/scan/.gitlab-ci.yml
+  # - local: services/ai/.gitlab-ci.yml
+  # - local: services/reporting/.gitlab-ci.yml
