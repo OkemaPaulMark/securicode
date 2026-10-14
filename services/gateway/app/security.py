@@ -1,43 +1,65 @@
-"""Password hashing (PBKDF2-SHA256, stdlib) and JWT issue/verify."""
+"""Password hashing (Argon2id, SEC-1), signed access tokens (SEC-3), AES-256-GCM for Git tokens (SEC-5),
+and single-use random tokens."""
 from __future__ import annotations
 
 import base64
 import hashlib
-import hmac
 import os
+import secrets
 import time
-import uuid
 
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-ITERATIONS = 200_000
+_hasher = PasswordHasher()  # Argon2id with the library's recommended parameters
+DUMMY_HASH = _hasher.hash("timing-equaliser-not-a-real-password")
 
 
 def hash_password(password: str) -> str:
-    salt = os.urandom(16)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ITERATIONS)
-    return f"pbkdf2_sha256${ITERATIONS}${base64.b64encode(salt).decode()}${base64.b64encode(dk).decode()}"
+    return _hasher.hash(password)
 
 
 def verify_password(password: str, stored: str) -> bool:
     try:
-        _, iterations, salt_b64, hash_b64 = stored.split("$")
-        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), base64.b64decode(salt_b64), int(iterations))
-        return hmac.compare_digest(dk, base64.b64decode(hash_b64))
-    except (ValueError, TypeError):
+        return _hasher.verify(stored, password)
+    except (VerificationError, InvalidHashError):
         return False
 
 
-def create_token(*, user_id: str, username: str, role: str, scope: str,
-                 secret: str, issuer: str, ttl: int) -> tuple[str, str]:
-    """Returns (jti, encoded token)."""
+def create_token(*, user_id: str, jti: str, scope: str, secret: str, issuer: str, ttl: int) -> str:
     now = int(time.time())
-    jti = str(uuid.uuid4())
-    claims = {"sub": user_id, "username": username, "role": role, "scope": scope,
-              "jti": jti, "iss": issuer, "iat": now, "exp": now + ttl}
-    return jti, jwt.encode(claims, secret, algorithm="HS256")
+    claims = {"sub": user_id, "jti": jti, "scope": scope, "iss": issuer, "iat": now, "exp": now + ttl}
+    return jwt.encode(claims, secret, algorithm="HS256")
 
 
 def decode_token(token: str, *, secret: str, issuer: str) -> dict:
     return jwt.decode(token, secret, algorithms=["HS256"], issuer=issuer,
                       options={"require": ["exp", "sub", "jti"]})
+
+
+def new_secret() -> tuple[str, str]:
+    """Returns (raw value to send to the user, SHA-256 hex to store)."""
+    raw = secrets.token_urlsafe(32)
+    return raw, sha256(raw)
+
+
+def sha256(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def aes_key(hex_key: str, fallback_secret: str) -> bytes:
+    """GIT_TOKEN_KEY in production (enforced by Settings.validate); derived key only for development."""
+    return bytes.fromhex(hex_key) if hex_key else hashlib.sha256(fallback_secret.encode()).digest()
+
+
+def encrypt(key: bytes, plaintext: str, bound_to: str) -> str:
+    nonce = os.urandom(12)
+    ciphertext = AESGCM(key).encrypt(nonce, plaintext.encode(), bound_to.encode())
+    return base64.b64encode(nonce + ciphertext).decode()
+
+
+def decrypt(key: bytes, blob: str, bound_to: str) -> str:
+    raw = base64.b64decode(blob)
+    return AESGCM(key).decrypt(raw[:12], raw[12:], bound_to.encode()).decode()

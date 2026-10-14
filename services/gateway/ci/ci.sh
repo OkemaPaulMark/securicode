@@ -23,10 +23,13 @@ context() { tar -C "$DIR" --exclude=.venv --exclude=__pycache__ --exclude='*.db'
 
 write_env_file() {
   : "${JWT_SECRET:?Set JWT_SECRET as a masked CI/CD variable (Settings > CI/CD > Variables)}"
+  : "${GIT_TOKEN_KEY:?Set GIT_TOKEN_KEY (openssl rand -hex 32) as a masked CI/CD variable}"
+  : "${INTERNAL_API_KEY:?Set INTERNAL_API_KEY (openssl rand -hex 24) as a masked CI/CD variable}"
   {
     echo "APP_ENV=production"
-    echo "JWT_SECRET=${JWT_SECRET}"
-    for v in ADMIN_USERNAME ADMIN_EMAIL ADMIN_PASSWORD CORS_ORIGINS TOKEN_TTL_SECONDS DATABASE_URL \
+    for v in JWT_SECRET GIT_TOKEN_KEY INTERNAL_API_KEY ADMIN_EMAIL ADMIN_PASSWORD DATABASE_URL CORS_ORIGINS \
+             PUBLIC_BASE_URL SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM REQUIRE_EMAIL_VERIFICATION \
+             IDLE_TIMEOUT_SECONDS DAILY_ASSESSMENT_LIMIT GATEWAY_ROUTES \
              PROJECT_SERVICE_URL SCAN_SERVICE_URL AI_SERVICE_URL REPORTING_SERVICE_URL; do
       [ -n "${!v:-}" ] && echo "${v}=${!v}"
     done

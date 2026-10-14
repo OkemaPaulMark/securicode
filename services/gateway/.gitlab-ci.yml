@@ -1,12 +1,14 @@
 # Gateway service pipeline. Included from the root .gitlab-ci.yml.
 # Jobs are prefixed gw: and variables GW_ so they never clash with the other services.
 #
-# CI/CD variables (GitLab: Settings > CI/CD > Variables):
-#   JWT_SECRET      masked + protected   (openssl rand -hex 32)
-#   ADMIN_EMAIL     protected            first admin account (username: admin)
-#   ADMIN_PASSWORD  masked + protected
-#   PROJECT_SERVICE_URL / SCAN_SERVICE_URL / AI_SERVICE_URL / REPORTING_SERVICE_URL
-#                   e.g. http://10.10.1.3:8001 — add each once that teammate's service is deployed
+# CI/CD variables (GitLab: Settings > CI/CD > Variables). Required:
+#   JWT_SECRET        masked + protected   openssl rand -hex 32
+#   GIT_TOKEN_KEY     masked + protected   openssl rand -hex 32   (AES-256 key for stored Git tokens, SEC-5)
+#   INTERNAL_API_KEY  masked + protected   openssl rand -hex 24   (shared with the other services)
+#   ADMIN_EMAIL       protected            first administrator account
+#   ADMIN_PASSWORD    masked + protected   10+ characters
+# Optional: PROJECT_SERVICE_URL, SCAN_SERVICE_URL, AI_SERVICE_URL, REPORTING_SERVICE_URL (e.g. http://10.10.1.3:8001),
+#   PUBLIC_BASE_URL, SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM, DAILY_ASSESSMENT_LIMIT, GATEWAY_ROUTES
 
 variables:
   GW_DIR: services/gateway
