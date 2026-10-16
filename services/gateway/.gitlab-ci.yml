@@ -18,7 +18,7 @@ variables:
   GW_PORT: "8000"
 
 .gw-base:
-  # tags: [cloudlab-runner-23]   # uncomment if the runner does not run untagged jobs
+  tags: [TAGNAME]
   before_script:
     - chmod +x "$GW_DIR/ci/ci.sh"
 
