@@ -31,7 +31,7 @@ variables:
 
 .gw-on-main:
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
       changes: [services/gateway/**/*]
 
 gw:test:
@@ -67,7 +67,7 @@ gw:rollback:
   environment:
     name: gateway
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
       changes: [services/gateway/**/*]
       when: manual                     # a person decides when production goes backwards
   allow_failure: true
