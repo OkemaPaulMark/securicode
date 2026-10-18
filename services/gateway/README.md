@@ -1,69 +1,99 @@
 # Gateway Service (API Gateway & Identity Service)
 
-The Gateway is the public entry point for the platform. It authenticates users, manages accounts, issues and
-validates access tokens, and routes traffic to the owning backend service. It does not own scanning logic,
-project state, or AI reasoning; it protects and routes the platform.
+**Owner:** Musheija Abraham · **Runs on:** worker1, port **8090** · **Container:** `securicode-gateway`
+**Image:** `gitlab.cranecloud.io:5050/2027-se4-final-year-projects/bse27-23/gateway:<commit short SHA>`
+**Deployed from branch:** `musheijaa` (and the default branch)
 
-Owner: Musheija Abraham · Implements SRS §4.1 (AUTH-1 to AUTH-9), SEC-1 to SEC-5, AUDT-1 to AUDT-4, BR-3, BR-5.
+The Gateway is the single entry point for the Securicode web app and VS Code extension. It handles accounts
+and sign-in, issues and checks access tokens, and forwards each `/api/...` request to the service that owns it.
+It holds no scanning, project or AI logic.
+
+Implements SRS §4.1 AUTH-1 to AUTH-9, SEC-1 to SEC-5, AUDT-1 to AUDT-4, BR-3 and BR-5.
+
+## How a request flows
+
+```
+VS Code extension / web app
+        │  Authorization: Bearer <token>
+        ▼
+  Gateway (worker1:8090)  ── checks token, session (60-min idle), role, daily limit
+        │  adds X-User-Id, X-User-Role, X-User-Verified, X-Internal-Key
+        ├── /api/projects/…, /api/assessments/…  → Project   (worker1:8002)
+        ├── /api/scans/…   (sent as /scans/…)    → Scan      (worker1:5000)
+        ├── /api/ai/…                            → AI        (not deployed yet)
+        └── /api/reports/…, /api/findings/…      → Reporting (not deployed yet)
+```
 
 ## Endpoints
 
-Interactive OpenAPI 3 docs: `http://<host>:8000/docs` (spec at `/openapi.json`).
+Interactive OpenAPI docs: `http://worker1:8090/docs`.
 
-### Accounts (`/api/auth/`)
-
-| Method | Path | Auth | SRS |
+| Method | Path | Who | SRS |
 |---|---|---|---|
-| POST | `/api/auth/register/` `{name, email, password}` | — | AUTH-1, SEC-1 (10+ chars, Argon2id) |
-| GET | `/api/auth/verify-email/?token=` | — (link in e-mail) | AUTH-2 |
-| POST | `/api/auth/resend-verification/` | bearer | AUTH-2 |
-| POST | `/api/auth/login/` `{email or username, password, name?, scope?}` → `{id, name, scope, token, …}` | — | AUTH-3, SEC-2 (locks 15 min after 5 failures) |
-| POST | `/api/auth/logout/` | bearer | SEC-3 |
-| GET / DELETE | `/api/auth/me/` (DELETE body `{password}`) | bearer | AUTH-9 |
-| POST | `/api/auth/password-reset/` `{email}` · `/api/auth/password-reset/confirm/` `{token, new_password}` | — | AUTH-5 (single use, 30 min) |
-| GET | `/auth/vscode?redirect_uri=vscode://…&state=` → browser login → `vscode://…?code=&state=` | — | AUTH-4 |
-| POST | `/api/auth/vscode/exchange/` `{code}` → token | — | AUTH-4 |
-| GET / POST / DELETE | `/api/auth/git-tokens/` `{provider: github\|gitlab, token, label?, host?}` | bearer | AUTH-6, SEC-5 (validated with provider, AES-256-GCM, shown masked) |
-| GET | `/api/auth/audit/` | bearer | AUDT-2 (own entries) |
+| POST | `/api/auth/register/` `{name, email, password}` | anyone | AUTH-1, SEC-1 (10+ chars, Argon2id) |
+| GET | `/api/auth/verify-email/?token=` | link in e-mail | AUTH-2 |
+| POST | `/api/auth/login/` `{email or username, password, name?, scope?}` | anyone | AUTH-3, SEC-2 (15-min lock after 5 failures) |
+| POST | `/api/auth/logout/` · GET/DELETE `/api/auth/me/` | signed in | SEC-3, AUTH-9 |
+| POST | `/api/auth/password-reset/` · `/api/auth/password-reset/confirm/` | anyone | AUTH-5 (single use, 30 min) |
+| GET | `/auth/vscode?redirect_uri=vscode://…` → POST `/api/auth/vscode/exchange/` | VS Code | AUTH-4 |
+| GET/POST/DELETE | `/api/auth/git-tokens/` | signed in | AUTH-6, SEC-5 (AES-256-GCM, masked) |
+| GET | `/api/auth/audit/` | signed in | AUDT-2 |
+| GET/PATCH | `/api/admin/users/…` | admin | AUTH-7, AUTH-8 |
+| GET | `/api/admin/audit/` | admin | AUDT-1, AUDT-2 |
+| GET/PUT | `/api/admin/settings/` `{daily_assessment_limit}` | admin | AUDT-3, BR-5 |
+| GET | `/api/admin/status/` | admin | AUDT-4 |
+| ANY | `/api/<prefix>/…` | signed in | routing |
 
-Sessions end after **60 minutes of inactivity** or at most 12 hours (SEC-3).
+## Contract for the other services
 
-### Administration (`/api/admin/`, administrators only, BR-3)
+- **The caller arrives in headers.** `X-User-Id`, `X-User-Email`, `X-User-Name`, `X-User-Role` (`user` or `admin`),
+  `X-User-Verified` and `X-Request-Id`. Backends do not check tokens; they use `X-User-Id` to enforce ownership (SEC-4).
+- **`X-Internal-Key` equals the shared `INTERNAL_API_KEY`.** Reject requests without it.
+- **Paths are forwarded unchanged.** For services listed in `GATEWAY_STRIP_API_PREFIX` (currently `scan`), the `/api` prefix is removed first.
+- **Each service provides `GET /health`.**
+- **Each service provides `DELETE /internal/users/{id}/`**, so a deleted account's data is removed everywhere (AUTH-9).
 
-| Method | Path | SRS |
+## Pipeline (`services/gateway/.gitlab-ci.yml`, runner tag `docker`)
+
+| Job | Stage | What it does |
 |---|---|---|
-| GET | `/api/admin/users/` | AUTH-7 |
-| PATCH | `/api/admin/users/{id}/` `{role: user\|admin, is_active}` | AUTH-7, AUTH-8 |
-| GET | `/api/admin/audit/?action=` | AUDT-1, AUDT-2 |
-| GET / PUT | `/api/admin/settings/` `{daily_assessment_limit}` | AUDT-3, BR-5 |
-| GET | `/api/admin/status/` | AUDT-4 |
+| `gw:test` | test | `docker build --target test`: ruff lint plus 20 pytest tests. Any failure stops the pipeline. |
+| `gw:build` | build | Builds the runtime image and pushes it to the GitLab registry, tagged with the commit SHA. |
+| `gw:deploy` | deploy | `DOCKER_HOST=ssh://gitlab-runner@worker1`: pulls and runs the image and waits for the Docker health check. If the container is unhealthy, it rolls back to the previous image automatically. |
+| `gw:verify` | deploy | Smoke test from the runner: health, register, verify e-mail, login, lockout, and backend status through the gateway. |
+| `gw:rollback` | deploy | **Manual.** Redeploys the previous image, or `ROLLBACK_TAG=<sha>`. |
 
-### Routing (bearer token required)
+Build and deploy run only on the default branch and on `musheijaa`. Other branches run `gw:test` only.
 
-| Prefix | Service | URL variable |
+Evidence:
+- Pipeline #10698: a deliberate password-check bug failed 6 tests, and build and deploy were blocked.
+- Pipeline #10699: the fix went green, and a manual rollback to `72b75ba3` was followed by a redeploy.
+
+## CI/CD variables (Settings → CI/CD → Variables)
+
+| Variable | Required | Notes |
 |---|---|---|
-| `/api/projects/…`, `/api/assessments/…` | Project | `PROJECT_SERVICE_URL` |
-| `/api/scans/…` | Scan | `SCAN_SERVICE_URL` |
-| `/api/ai/…` | AI | `AI_SERVICE_URL` |
-| `/api/reports/…`, `/api/findings/…` | Reporting | `REPORTING_SERVICE_URL` |
+| `JWT_SECRET` | yes | `openssl rand -hex 32` |
+| `GIT_TOKEN_KEY` | yes | `openssl rand -hex 32` (AES-256 key for stored Git tokens) |
+| `INTERNAL_API_KEY` | yes | `openssl rand -hex 24`. Shared with the other services. |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | yes | The first administrator account. The password needs 10+ characters. |
+| `GW_PORT` | yes | `8090`, because port 8000 on worker1 is taken by `hello`. |
+| `PROJECT_SERVICE_URL` | when deployed | `http://worker1:8002` |
+| `SCAN_SERVICE_URL` | when deployed | `http://worker1:5000` |
+| `GATEWAY_STRIP_API_PREFIX` | optional | `scan` |
+| `AI_SERVICE_URL`, `REPORTING_SERVICE_URL` | when deployed | e.g. `http://worker2:<port>` |
+| `GW_HOST` | optional | Defaults to `worker1`. Set it to `worker2` to move the gateway. |
 
-Change the table with `GATEWAY_ROUTES`, e.g. `projects=project,assessments=project,scans=scan,ai=ai,reports=reporting`.
+The container can reach `worker1` and `worker2` by name: the deploy step passes their addresses in with `--add-host`.
 
-`POST /api/assessments/`, `POST /api/scans/` and `POST /api/projects/{id}/assessments|scans/` start an assessment:
-the user must have a verified e-mail (AUTH-2), and non-admins may start at most `daily_assessment_limit`
-(default 10) per day (BR-5).
+## Rebuild from a fresh CloudLab experiment
 
-## Contract for backend services (Project, Scan, AI, Reporting)
-
-- **Paths are forwarded unchanged:** `GET /api/scans/42/` → `GET {SCAN_SERVICE_URL}/api/scans/42/`.
-- **The caller arrives in headers:** `X-User-Id`, `X-User-Email`, `X-User-Name`, `X-User-Role` (`user`|`admin`),
-  `X-User-Verified`, `X-Request-Id`. Backends do not check tokens. Enforce ownership (SEC-4) with `X-User-Id`.
-- **`X-Internal-Key` equals the shared `INTERNAL_API_KEY`.** Reject requests without it so nobody can bypass the gateway.
-- **Each backend exposes `GET /health`.**
-- **`DELETE /internal/users/{id}/`:** each backend should delete that user's data. The gateway calls it when an account is deleted (AUTH-9).
-- **Gateway internal endpoints** (send `X-Internal-Key`):
-  - `GET /internal/git-tokens/{id}/` with `X-User-Id` returns the decrypted Git token, for cloning (Project service).
-  - `GET /internal/users/{id}/` returns name and e-mail, for reports.
+1. Start a new experiment from the course profile and wait until `runner`, `worker1` and `worker2` are ready.
+2. On the runner, register the GitLab runner with the tag `docker` and the shell executor, then run `sudo usermod -aG docker gitlab-runner && sudo systemctl restart gitlab-runner` (Lab 1 §1).
+3. On the runner, run `sudo /local/repository/scripts/setup-deploy-key.sh` and check that both workers show `OK` (Lab 1 §3).
+4. In GitLab, check that all the CI/CD variables above exist.
+5. Go to **Build → Pipelines → Run pipeline** on `musheijaa`. Test, build, deploy and verify run with no manual step.
+6. Check that `gw:verify` ends with `Job succeeded` and `/api/projects/ -> 200`.
 
 ## Run locally
 
@@ -71,43 +101,8 @@ the user must have a verified e-mail (AUTH-2), and non-admins may start at most 
 cd services/gateway
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
-pytest -q
-uvicorn app.main:app --reload --port 8000
+pytest -q                                    # 20 passed
+uvicorn app.main:app --reload --port 8000    # http://localhost:8000/docs
 ```
 
 Without `SMTP_HOST`, verification and reset e-mails are printed to the log (`docker logs securicode-gateway`).
-
-## Configuration
-
-Required in production (`APP_ENV=production`):
-
-| Variable | Notes |
-|---|---|
-| `JWT_SECRET` | 32+ characters |
-| `GIT_TOKEN_KEY` | 64 hex characters |
-| `INTERNAL_API_KEY` | 16+ characters |
-
-Optional:
-
-| Variable | Notes |
-|---|---|
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first administrator |
-| `DATABASE_URL` | default SQLite in `/data`; the shared Postgres works: `postgresql+psycopg://securicode:securicode@postgres:5432/securicode` |
-| `PUBLIC_BASE_URL` | used in e-mail links |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | outgoing e-mail |
-| `IDLE_TIMEOUT_SECONDS` | default 3600 |
-| `DAILY_ASSESSMENT_LIMIT` | default 10 |
-| `CORS_ORIGINS` | allowed browser origins |
-| `GATEWAY_ROUTES` | routing table (see above) |
-| the four `*_SERVICE_URL`s | backend addresses |
-
-## CI/CD (GitLab, CloudLab runner)
-
-1. `gw:test`: ruff and 18 pytest tests inside `docker build --target test` on worker1.
-2. `gw:build`: builds image `securicode/gateway:<short SHA>`.
-3. `gw:deploy`: runs container `securicode-gateway` on worker1:8000, waits for the Docker HEALTHCHECK, and rolls back automatically if the container is unhealthy.
-4. `gw:rollback`: manual.
-
-Build and deploy run only on the default branch.
-
-TLS (CI-1) is expected to be terminated in front of the gateway (e.g. a reverse proxy) in the reference deployment.
