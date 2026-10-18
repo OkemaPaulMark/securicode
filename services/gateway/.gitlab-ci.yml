@@ -73,3 +73,14 @@ gw:rollback:
   allow_failure: true
   script:
     - "$GW_DIR/ci/ci.sh rollback"      # optional variable ROLLBACK_TAG=<short sha>
+
+gw:verify:
+  extends: [.gw-base]
+  stage: deploy
+  needs: ["gw:deploy"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
+      changes: [services/gateway/**/*]
+  allow_failure: true
+  script:
+    - bash "$GW_DIR/ci/verify.sh"
