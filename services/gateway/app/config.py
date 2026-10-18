@@ -76,6 +76,8 @@ class Settings:
     # Routing to the other services
     routes: dict[str, str] = field(default_factory=lambda: parse_routes(_env("GATEWAY_ROUTES", DEFAULT_ROUTES)))
     service_urls: dict[str, str] | None = None
+    # Services whose own routes have no /api prefix (e.g. Scan uses /scans): /api/scans/1 is sent as /scans/1
+    strip_api_prefix_for: list[str] = field(default_factory=lambda: _list("GATEWAY_STRIP_API_PREFIX", ""))
     internal_api_key: str = field(default_factory=lambda: _env("INTERNAL_API_KEY"))
     upstream_timeout_seconds: float = field(default_factory=lambda: float(_env("UPSTREAM_TIMEOUT", "60")))
     max_body_bytes: int = field(default_factory=lambda: int(_env("MAX_BODY_MB", "50")) * 1024 * 1024)

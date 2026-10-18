@@ -32,6 +32,8 @@ def backends(request: httpx.Request) -> httpx.Response:
     if host == "gitlab.cranecloud.io":
         return httpx.Response(200 if request.headers.get("private-token") == "glpat-valid-1234" else 401, json={})
     captured.append(request)
+    if host == "project.local" and request.url.path == "/api/projects/":   # FastAPI-style slash redirect
+        return httpx.Response(307, headers={"location": "http://project.local/api/projects"})
     if request.method == "DELETE" and "/internal/users/" in request.url.path:
         return httpx.Response(204)
     return httpx.Response(201 if request.method == "POST" else 200,
@@ -367,3 +369,22 @@ def test_production_requires_real_secrets():
     Settings(app_env="production", jwt_secret="s" * 40, git_token_key="ab" * 32,
              internal_api_key="i" * 20).validate()
     assert hash_password("a") != hash_password("a")   # salted
+
+
+# ---------------------------------------------------------------- backend quirks hidden by the gateway
+def test_trailing_slash_redirect_is_followed_and_no_slash_route(app_client):
+    app, c = app_client
+    auth = verified_user(app, c)
+    r = c.get("/api/projects/", headers=auth)
+    assert r.status_code == 200 and r.json()["path"] == "/api/projects"
+    assert "location" not in r.headers
+    r = c.get("/api/projects?page=1", headers=auth, follow_redirects=False)
+    assert r.status_code == 200 and r.json() == {"path": "/api/projects", "query": "page=1"}
+
+
+def test_strip_api_prefix_for_selected_services(app_client):
+    app, c = app_client
+    app.state.settings.strip_api_prefix_for = ["scan"]
+    auth = verified_user(app, c)
+    assert c.get("/api/scans/7/findings", headers=auth).json()["path"] == "/scans/7/findings"
+    assert c.get("/api/projects/9", headers=auth).json()["path"] == "/api/projects/9"

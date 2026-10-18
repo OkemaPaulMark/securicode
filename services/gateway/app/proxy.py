@@ -41,8 +41,9 @@ def _check_assessment_rules(db, settings, p: Principal) -> None:
                             f"Daily limit of {limit} assessments reached. Try again tomorrow.")
 
 
+@router.api_route("/api/{prefix}", methods=METHODS, include_in_schema=False)
 @router.api_route("/api/{prefix}/{path:path}", methods=METHODS)
-async def proxy(prefix: str, path: str, request: Request, p: Principal = Depends(get_principal),
+async def proxy(prefix: str, request: Request, path: str = "", p: Principal = Depends(get_principal),
                 db=Depends(get_db)):
     s = request.app.state.settings
     service = s.routes.get(prefix)
@@ -75,10 +76,15 @@ async def proxy(prefix: str, path: str, request: Request, p: Principal = Depends
     if s.internal_api_key:
         headers["X-Internal-Key"] = s.internal_api_key
 
+    upstream_path = request.url.path
+    if service in s.strip_api_prefix_for:
+        upstream_path = upstream_path[len("/api"):]
     try:
+        # follow_redirects: a backend's trailing-slash redirect points at its internal address, which clients
+        # cannot reach; the gateway follows it itself (307/308 keep the method and body).
         upstream = await request.app.state.http.request(
-            request.method, f"{base}{request.url.path}", params=request.query_params, content=body,
-            headers=headers, timeout=s.upstream_timeout_seconds)
+            request.method, f"{base}{upstream_path}", params=request.query_params, content=body,
+            headers=headers, timeout=s.upstream_timeout_seconds, follow_redirects=True)
     except httpx.TimeoutException:
         raise HTTPException(status.HTTP_504_GATEWAY_TIMEOUT, f"The {service} service timed out")
     except httpx.HTTPError:
