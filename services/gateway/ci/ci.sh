@@ -65,7 +65,7 @@ case "$CMD" in
     ;;
   build)
     login
-    docker build --target runtime --build-arg "APP_VERSION=${TAG}" \
+    docker build --target runtime --provenance=false --sbom=false --build-arg "APP_VERSION=${TAG}" \
       --label "org.opencontainers.image.revision=${CI_COMMIT_SHA:-$TAG}" -t "$IMAGE" "$DIR"
     docker push "$IMAGE"
     echo "PUSHED ${IMAGE}"
