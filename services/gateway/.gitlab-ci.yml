@@ -25,14 +25,14 @@ variables:
 .gw-on-change:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes: [services/gateway/**/*]
+      changes: [services/gateway/**/*, deploy/compose.*.yml]
     - if: $CI_COMMIT_BRANCH
-      changes: [services/gateway/**/*]
+      changes: [services/gateway/**/*, deploy/compose.*.yml]
 
 .gw-on-main:
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
-      changes: [services/gateway/**/*]
+      changes: [services/gateway/**/*, deploy/compose.*.yml]
 
 gw:test:
   extends: [.gw-base, .gw-on-change]
@@ -68,7 +68,7 @@ gw:rollback:
     name: gateway
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
-      changes: [services/gateway/**/*]
+      changes: [services/gateway/**/*, deploy/compose.*.yml]
       when: manual                     # a person decides when production goes backwards
   allow_failure: true
   script:
@@ -80,7 +80,7 @@ gw:verify:
   needs: ["gw:deploy"]
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
-      changes: [services/gateway/**/*]
+      changes: [services/gateway/**/*, deploy/compose.*.yml]
   allow_failure: true
   script:
     - bash "$GW_DIR/ci/verify.sh"

@@ -1,0 +1,29 @@
+# Services that run on worker1 (Lab 1 Part 2: one compose file per host).
+# Each service's pipeline deploys only its own entry, e.g.:
+#   DOCKER_HOST=ssh://gitlab-runner@worker1 docker compose -f deploy/compose.worker1.yml up -d gateway
+# Values in ${...} are supplied by that service's CI script; nothing secret is stored in this file.
+name: securicode-worker1
+
+services:
+  gateway:                      # owner: Musheija Abraham - services/gateway
+    image: ${GATEWAY_IMAGE:?set by services/gateway/ci/ci.sh}
+    container_name: securicode-gateway
+    restart: unless-stopped
+    ports:
+      - "${GW_PORT:-8090}:8000"
+    env_file:
+      - ${GATEWAY_ENV_FILE:?set by services/gateway/ci/ci.sh}
+    extra_hosts:                # containers cannot resolve the experiment hostnames on their own
+      - "worker1:${WORKER1_IP:?set by services/gateway/ci/ci.sh}"
+      - "worker2:${WORKER2_IP:?set by services/gateway/ci/ci.sh}"
+    volumes:
+      - gateway-data:/data
+    labels:
+      service: securicode-gateway
+
+  # project:                    # owner: Akakikunda Benitah - add here when moving from `docker run`
+  # scan:                       # owner: Okema Paul Mark   - or place it in deploy/compose.worker2.yml
+
+volumes:
+  gateway-data:
+    name: securicode-gateway-data   # keeps the user database created by earlier deploys
