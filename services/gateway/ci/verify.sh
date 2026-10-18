@@ -29,3 +29,16 @@ echo "===== Lockout (expect: 401 401 401 401 401 429)"
 for i in 1 2 3 4 5 6; do
   curl -s -o /dev/null -w "%{http_code} " -X POST "$URL/api/auth/login/" -H "$J" -d "{\"email\":\"$EMAIL\",\"password\":\"wrong-password\"}"
 done; echo
+
+if [ -n "${ADMIN_EMAIL:-}" ] && [ -n "${ADMIN_PASSWORD:-}" ]; then
+  echo "===== Gateway view of backend services (admin /api/admin/status/)"
+  AJWT=$(curl -sS -X POST "$URL/api/auth/login/" -H "$J" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
+        | python3 -c 'import sys,json;print(json.load(sys.stdin).get("token",""))')
+  curl -sS "$URL/api/admin/status/" -H "Authorization: Bearer $AJWT"; echo
+  echo "===== Through the gateway: GET /api/projects/ and /api/scans/"
+  for p in projects scans; do
+    echo -n "/api/$p/ -> "; curl -sS -o /dev/null -w "%{http_code}\n" "$URL/api/$p/" -H "Authorization: Bearer $AJWT"
+  done
+else
+  echo "(set ADMIN_EMAIL and ADMIN_PASSWORD CI/CD variables to see the backend status check)"
+fi

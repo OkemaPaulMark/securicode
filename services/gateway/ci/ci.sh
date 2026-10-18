@@ -44,7 +44,7 @@ make_env_file() {  # read by the docker client on the runner; never written to t
 run_container() {  # $1 = full image ref
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   docker run -d --name "$NAME" --restart unless-stopped -p "${PORT}:8000" -v "${NAME}-data:/data" \
-    --env-file "$ENV_FILE" --label "service=${NAME}" "$1" >/dev/null
+    --env-file "$ENV_FILE" --label "service=${NAME}" $(host_args) "$1" >/dev/null
 }
 
 wait_healthy() {
@@ -56,6 +56,14 @@ wait_healthy() {
     sleep 2
   done
   return 1
+}
+
+host_args() {  # containers cannot resolve worker1/worker2, so pass the runner's view of them in
+  for h in worker1 worker2; do
+    ip=$(getent hosts "$h" | awk '{print $1; exit}')
+    [ -n "$ip" ] && printf -- '--add-host=%s:%s ' "$h" "$ip"
+  done
+  true
 }
 
 case "$CMD" in
