@@ -2,7 +2,6 @@
 SRS 4.1 AUTH-1..AUTH-9, SEC-1..SEC-5, AUDT-1."""
 from __future__ import annotations
 
-import html
 import uuid
 from datetime import timedelta
 from typing import Literal
@@ -14,6 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import AliasChoices, BaseModel, EmailStr, Field
 from sqlalchemy import delete, select, update
 
+from . import pages as views
 from .db import ApiSession, AuditEntry, GitToken, OneTimeToken, User, utcnow
 from .deps import Principal, audit, client_ip, get_db, get_principal
 from .mailer import send_mail
@@ -218,12 +218,17 @@ def verify_email(token: str, request: Request, db=Depends(get_db)):
     """AUTH-2"""
     row = _consume(db, token, "verify")
     user = db.get(User, row.user_id) if row else None
+    web = _settings(request).web_app_url
     if user is None:
-        return HTMLResponse(_page("Link not valid", "<p>This verification link is invalid or has expired.</p>"), 400)
+        msg = ("The verification link is invalid, was already used, or is more than 24 hours old. "
+               "Sign in and choose \"Send a new link\" to get another.")
+        return _html(views.result("This link no longer works", msg, ok=False, action_url=web,
+                                  action_label="Open Securicode"), 400)
     user.email_verified = True
     db.commit()
     audit(db, "user.email_verified", user_id=user.id, actor=user.email, ip=client_ip(request))
-    return HTMLResponse(_page("E-mail verified", "<p>Your e-mail address is verified. You can close this page.</p>"))
+    return _html(views.result("E-mail verified", f"Thanks, {user.name}. You can now run security assessments.",
+                              ok=True, action_url=web, action_label="Open Securicode"))
 
 
 @router.post("/resend-verification/", status_code=status.HTTP_202_ACCEPTED)
@@ -328,7 +333,7 @@ def _check_redirect(settings, redirect_uri: str) -> None:
 @pages.get("/auth/vscode", response_class=HTMLResponse)
 def vscode_login_page(request: Request, redirect_uri: str, state: str = ""):
     _check_redirect(_settings(request), redirect_uri)
-    return HTMLResponse(_login_form(redirect_uri, state))
+    return _html(views.vscode_login(redirect_uri, state))
 
 
 @pages.post("/auth/vscode")
@@ -340,7 +345,7 @@ async def vscode_login_submit(request: Request, db=Depends(get_db)):
     try:
         user = authenticate(db, s, str(form.get("email", "")), str(form.get("password", "")), client_ip(request))
     except HTTPException as exc:
-        return HTMLResponse(_login_form(redirect_uri, state, exc.detail), status_code=exc.status_code)
+        return _html(views.vscode_login(redirect_uri, state, exc.detail, str(form.get("email", ""))), exc.status_code)
     code = _one_time(db, user.id, "vscode", VSCODE_CODE_TTL)
     sep = "&" if "?" in redirect_uri else "?"
     return RedirectResponse(f"{redirect_uri}{sep}{urlencode({'code': code, 'state': state})}",
@@ -358,22 +363,37 @@ def vscode_exchange(body: CodeIn, request: Request, db=Depends(get_db)):
 
 
 @pages.get("/auth/reset-password", response_class=HTMLResponse)
-def reset_password_page(token: str = ""):
-    t = html.escape(token, quote=True)
-    body = f"""<form id="f"><input type="hidden" name="token" value="{t}">
-<label>New password<input type="password" name="new_password" minlength="10" required></label>
-<button>Set password</button></form><p id="msg"></p>
-<script>
-document.getElementById('f').onsubmit = async (e) => {{
-  e.preventDefault();
-  const d = Object.fromEntries(new FormData(e.target));
-  const r = await fetch('/api/auth/password-reset/confirm/', {{method: 'POST',
-    headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(d)}});
-  document.getElementById('msg').textContent = r.ok ? 'Password changed. You can now sign in.'
-    : ((await r.json()).detail || 'Failed');
-}};
-</script>"""
-    return HTMLResponse(_page("Choose a new password", body))
+def reset_password_page(request: Request, token: str = ""):
+    s = _settings(request)
+    if not token:
+        msg = "Open the link from the e-mail again, or request a new one from the sign-in page."
+        return _html(views.result("This link is incomplete", msg, ok=False,
+                                  action_url=f"{s.web_app_url}/forgot-password",
+                                  action_label="Request a new link"), 400)
+    return _html(views.reset_form(token, min_length=s.min_password_length))
+
+
+@pages.post("/auth/reset-password", response_class=HTMLResponse)
+async def reset_password_submit(request: Request, db=Depends(get_db)):
+    """Plain HTML form version of /api/auth/password-reset/confirm/, so the page needs no JavaScript."""
+    form = await request.form()
+    token, new = str(form.get("token", "")), str(form.get("new_password", ""))
+    s = _settings(request)
+    if new != str(form.get("confirm", new)):
+        return _html(views.reset_form(token, "The two passwords don't match.", s.min_password_length), 422)
+    try:
+        confirm_password_reset(ResetConfirmIn(token=token, new_password=new), request, db)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_400_BAD_REQUEST:
+            msg = f"{exc.detail}. Request a new link from the sign-in page."
+            return _html(views.result("This link no longer works", msg, ok=False,
+                                      action_url=f"{s.web_app_url}/forgot-password",
+                                      action_label="Request a new link"), 400)
+        return _html(views.reset_form(token, str(exc.detail), s.min_password_length), exc.status_code)
+    except ValueError:
+        return _html(views.reset_form(token, "Passwords can be at most 128 characters.", s.min_password_length), 422)
+    return _html(views.result("Password changed", "You've been signed out everywhere. Sign in with your new password.",
+                              ok=True, action_url=f"{s.web_app_url}/signin", action_label="Sign in"))
 
 
 # ---------------------------------------------------------------- Git access tokens (AUTH-6, SEC-5)
@@ -426,20 +446,5 @@ def delete_git_token(token_id: str, request: Request, p: Principal = Depends(get
 
 
 # ---------------------------------------------------------------- HTML
-def _page(title: str, body: str) -> str:
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>{html.escape(title)} · Securicode</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:420px;margin:10vh auto;padding:0 16px;color:#1f2328}}
-label{{display:block;margin:12px 0}}input{{display:block;width:100%;padding:8px;margin-top:4px;box-sizing:border-box}}
-button{{padding:9px 16px;margin-top:8px}}.err{{color:#cf222e}}</style></head>
-<body><h1>{html.escape(title)}</h1>{body}</body></html>"""
-
-
-def _login_form(redirect_uri: str, state: str, error: str = "") -> str:
-    r, s = html.escape(redirect_uri, quote=True), html.escape(state, quote=True)
-    err = f'<p class="err">{html.escape(error)}</p>' if error else ""
-    return _page("Sign in to Securicode for VS Code", f"""{err}<form method="post" action="/auth/vscode">
-<input type="hidden" name="redirect_uri" value="{r}"><input type="hidden" name="state" value="{s}">
-<label>E-mail<input type="email" name="email" required autofocus></label>
-<label>Password<input type="password" name="password" required></label>
-<button>Sign in</button></form>""")
+def _html(body: str, status_code: int = 200) -> HTMLResponse:
+    return HTMLResponse(body, status_code=status_code, headers=views.SECURITY_HEADERS)

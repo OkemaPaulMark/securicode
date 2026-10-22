@@ -1,0 +1,68 @@
+# Web app pipeline. Included from the root .gitlab-ci.yml.
+# Jobs are prefixed web: and variables WEB_ so they never clash with the services.
+# No secrets are needed: the web app is static files plus an nginx proxy to the gateway.
+# Optional CI/CD variables: WEB_GATEWAY_URL (default http://host.docker.internal:8000, the gateway on the same worker)
+
+variables:
+  WEB_DIR: apps/web
+  WEB_IMAGE: securicode/web
+  WEB_CONTAINER: securicode-web
+  WEB_HOST: worker1
+  WEB_PORT: "8080"
+
+.web-base:
+  # tags: [cloudlab-runner-23]   # uncomment if the runner does not run untagged jobs
+  before_script:
+    - chmod +x "$WEB_DIR/ci/ci.sh"
+
+.web-on-change:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: [apps/web/**/*]
+    - if: $CI_COMMIT_BRANCH
+      changes: [apps/web/**/*]
+
+.web-on-main:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: [apps/web/**/*]
+
+web:test:
+  extends: [.web-base, .web-on-change]
+  stage: test
+  script:
+    - "$WEB_DIR/ci/ci.sh test"          # tsc + vitest inside docker build --target test
+
+web:build:
+  extends: [.web-base, .web-on-main]
+  stage: build
+  needs: ["web:test"]
+  script:
+    - "$WEB_DIR/ci/ci.sh build"         # image securicode/web:<commit short SHA> on worker1
+
+web:deploy:
+  extends: [.web-base, .web-on-main]
+  stage: deploy
+  needs: ["web:build"]
+  resource_group: web
+  environment:
+    name: web
+    url: http://$WEB_HOST:$WEB_PORT/
+  script:
+    - "$WEB_DIR/ci/ci.sh deploy"        # waits for HEALTHCHECK + smoke test, auto-rolls back on failure
+    - "$WEB_DIR/ci/ci.sh status"
+
+web:rollback:
+  extends: [.web-base]
+  stage: deploy
+  needs: ["web:deploy"]
+  resource_group: web
+  environment:
+    name: web
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: [apps/web/**/*]
+      when: manual
+  allow_failure: true
+  script:
+    - "$WEB_DIR/ci/ci.sh rollback"      # optional variable ROLLBACK_TAG=<short sha>

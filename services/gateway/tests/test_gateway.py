@@ -388,3 +388,45 @@ def test_strip_api_prefix_for_selected_services(app_client):
     auth = verified_user(app, c)
     assert c.get("/api/scans/7/findings", headers=auth).json()["path"] == "/scans/7/findings"
     assert c.get("/api/projects/9", headers=auth).json()["path"] == "/api/projects/9"
+
+
+# ---------------------------------------------------------------- gateway pages (AUTH-2, AUTH-4, AUTH-5)
+def test_pages_are_branded_and_locked_down(client):
+    home = client.get("/")
+    assert home.status_code == 200 and "Securicode gateway" in home.text and 'href="/docs"' in home.text
+    csp = home.headers["content-security-policy"]
+    assert "default-src 'none'" in csp and "script" not in csp       # no JavaScript allowed on gateway pages
+    assert home.headers["x-frame-options"] == "DENY"
+    page = client.get("/auth/vscode", params={"redirect_uri": "vscode://securicode.ext/auth", "state": '"><script>'})
+    assert "<script>" not in page.text and "&quot;&gt;&lt;script&gt;" in page.text   # state is escaped
+    assert client.get("/auth/reset-password").status_code == 400                     # missing token
+
+
+def test_verify_email_page_links_to_web_app(app_client):
+    app, c = app_client
+    app.state.settings.web_app_url = "https://securicode.example"
+    register(c)
+    ok = c.get("/api/auth/verify-email/", params={"token": last_link_token(app, "verify-email")})
+    assert ok.status_code == 200 and "E-mail verified" in ok.text and 'href="https://securicode.example"' in ok.text
+    bad = c.get("/api/auth/verify-email/", params={"token": "nope"})
+    assert bad.status_code == 400 and "no longer works" in bad.text
+
+
+def test_password_reset_html_form_without_javascript(app_client):
+    app, c = app_client
+    register(c)
+    c.post("/api/auth/password-reset/", json={"email": "dev@test.io"})
+    token = last_link_token(app, "reset-password")
+    form = c.get("/auth/reset-password", params={"token": token})
+    assert 'method="post"' in form.text and "<script" not in form.text
+    mismatch = c.post("/auth/reset-password", data={"token": token, "new_password": "Brand-New-Pass-7", "confirm": "x"})
+    assert mismatch.status_code == 422 and "don&#x27;t match" in mismatch.text
+    weak = c.post("/auth/reset-password", data={"token": token, "new_password": "short", "confirm": "short"})
+    assert weak.status_code == 422 and "at least 10" in weak.text
+    done = c.post("/auth/reset-password",
+                  data={"token": token, "new_password": "Brand-New-Pass-7", "confirm": "Brand-New-Pass-7"})
+    assert done.status_code == 200 and "Password changed" in done.text
+    again = c.post("/auth/reset-password",
+                   data={"token": token, "new_password": "Another-Pass-77", "confirm": "Another-Pass-77"})
+    assert again.status_code == 400                                                   # single use
+    login(c, password="Brand-New-Pass-7")

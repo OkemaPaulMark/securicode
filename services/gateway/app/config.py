@@ -58,6 +58,8 @@ class Settings:
 
     # E-mail (CI-5). Without SMTP_HOST, mails are written to the container log instead.
     public_base_url: str = field(default_factory=lambda: _env("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/"))
+    # Where "Open Securicode" links on gateway pages point (the web app, apps/web).
+    web_app_url: str = field(default_factory=lambda: _env("WEB_APP_URL", "").rstrip("/"))
     smtp_host: str = field(default_factory=lambda: _env("SMTP_HOST"))
     smtp_port: int = field(default_factory=lambda: int(_env("SMTP_PORT", "587")))
     smtp_user: str = field(default_factory=lambda: _env("SMTP_USER"))
@@ -80,7 +82,7 @@ class Settings:
     strip_api_prefix_for: list[str] = field(default_factory=lambda: _list("GATEWAY_STRIP_API_PREFIX", ""))
     internal_api_key: str = field(default_factory=lambda: _env("INTERNAL_API_KEY"))
     upstream_timeout_seconds: float = field(default_factory=lambda: float(_env("UPSTREAM_TIMEOUT", "60")))
-    max_body_bytes: int = field(default_factory=lambda: int(_env("MAX_BODY_MB", "50")) * 1024 * 1024)
+    max_body_bytes: int = field(default_factory=lambda: int(_env("MAX_BODY_MB", "100")) * 1024 * 1024)
     cors_origins: list[str] = field(default_factory=lambda: _list("CORS_ORIGINS", "*"))
 
     # Business rules (BR-5)
@@ -89,6 +91,7 @@ class Settings:
         default_factory=lambda: _env("ASSESSMENT_CREATE_PATTERN", DEFAULT_ASSESSMENT_PATTERN))
 
     def __post_init__(self) -> None:
+        self.web_app_url = self.web_app_url or self.public_base_url
         if self.service_urls is None:  # PROJECT_SERVICE_URL, SCAN_SERVICE_URL, AI_SERVICE_URL, REPORTING_SERVICE_URL
             self.service_urls = {s: _env(f"{s.upper()}_SERVICE_URL").rstrip("/") for s in set(self.routes.values())}
         self.assessment_regex = re.compile(self.assessment_create_pattern)

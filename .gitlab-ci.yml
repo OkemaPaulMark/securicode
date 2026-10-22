@@ -3,6 +3,7 @@ stages: [test, build, deploy]
 
 include:
   - local: services/gateway/.gitlab-ci.yml
+  - local: apps/web/.gitlab-ci.yml
   # - local: services/project/.gitlab-ci.yml
   # - local: services/scan/.gitlab-ci.yml
   # - local: services/ai/.gitlab-ci.yml

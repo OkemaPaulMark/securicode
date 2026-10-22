@@ -1,5 +1,8 @@
 version: "3.9"
 
+# Local stack. `make up` starts everything; open http://localhost:8080 for the web app.
+# Development secrets only; real values come from GitLab CI/CD variables in deployment.
+
 services:
   postgres:
     image: postgres:16
@@ -16,6 +19,36 @@ services:
     image: redis:7
     ports:
       - "6379:6379"
+
+  gateway:
+    build:
+      context: ../../services/gateway
+      target: runtime
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://securicode:securicode@postgres:5432/securicode
+      ADMIN_EMAIL: admin@securicode.local
+      ADMIN_PASSWORD: Admin-Pass-123
+      PUBLIC_BASE_URL: http://localhost:8080   # links in e-mails go through the web app
+      WEB_APP_URL: http://localhost:8080
+      GIT_TOKEN_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      INTERNAL_API_KEY: local-dev-internal-key
+      # PROJECT_SERVICE_URL / SCAN_SERVICE_URL / AI_SERVICE_URL / REPORTING_SERVICE_URL: add as services come online
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ../../apps/web
+      target: runtime
+    environment:
+      GATEWAY_URL: http://gateway:8000
+    depends_on:
+      - gateway
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:

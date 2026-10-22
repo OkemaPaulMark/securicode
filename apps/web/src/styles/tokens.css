@@ -1,0 +1,66 @@
+/* Securicode design tokens. One source of truth for colour, type and spacing.
+   Severity colours always travel with a text label and a shape (SRS 3.1: never colour alone). */
+:root {
+  color-scheme: light;
+  --paper: #f3f5f4;
+  --surface: #ffffff;
+  --surface-2: #eaefed;
+  --ink: #16201c;
+  --ink-2: #4a5752;
+  --ink-3: #6b7873;
+  --line: #d5dcd9;
+  --line-strong: #b7c2be;
+  --accent: #0b6b57;
+  --accent-hover: #095846;
+  --accent-tint: #e3f1ec;
+  --on-accent: #ffffff;
+  --focus: #1d5fd6;
+
+  --crit: #a61b1b;  --crit-bg: #fbe9e7;
+  --high: #b4530a;  --high-bg: #fcefe3;
+  --med: #7d6000;   --med-bg: #faf3d9;
+  --low: #2f5f96;   --low-bg: #e7eef7;
+  --ok: #0b6b57;    --ok-bg: #e3f1ec;
+  --muted-bg: #edf0ef;
+
+  --add-bg: #e6f4ea; --add-ink: #0f5132; --del-bg: #fdecea; --del-ink: #8a1c1c;
+
+  --font-ui: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-code: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --t-xs: 0.8125rem;  /* 13 */
+  --t-sm: 0.875rem;   /* 14 */
+  --t-md: 0.9375rem;  /* 15 body */
+  --t-lg: 1.0625rem;  /* 17 */
+  --t-xl: 1.3125rem;  /* 21 */
+  --t-2xl: 1.75rem;   /* 28 */
+  --t-3xl: 2.5rem;    /* 40 */
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --r-sm: 4px; --r-md: 8px; --r-lg: 14px;
+  --shadow-pop: 0 12px 32px -8px rgba(22, 32, 28, 0.28), 0 2px 6px rgba(22, 32, 28, 0.08);
+  --sidebar: 248px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #0e1513; --surface: #151e1b; --surface-2: #1b2622; --ink: #e3eae7; --ink-2: #a3b0ab; --ink-3: #82908a;
+    --line: #26332e; --line-strong: #364640; --accent: #4cc2a2; --accent-hover: #6fd3b7; --accent-tint: #173129;
+    --on-accent: #06231b; --focus: #7aa7ff;
+    --crit: #ff8a80; --crit-bg: #3a1714; --high: #ffb067; --high-bg: #3a2412; --med: #e8c55a; --med-bg: #342c10;
+    --low: #8bb6ef; --low-bg: #16263b; --ok: #4cc2a2; --ok-bg: #173129; --muted-bg: #1d2824;
+    --add-bg: #12301f; --add-ink: #9be3b5; --del-bg: #3a1714; --del-ink: #ffb4ab;
+    --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0e1513; --surface: #151e1b; --surface-2: #1b2622; --ink: #e3eae7; --ink-2: #a3b0ab; --ink-3: #82908a;
+  --line: #26332e; --line-strong: #364640; --accent: #4cc2a2; --accent-hover: #6fd3b7; --accent-tint: #173129;
+  --on-accent: #06231b; --focus: #7aa7ff;
+  --crit: #ff8a80; --crit-bg: #3a1714; --high: #ffb067; --high-bg: #3a2412; --med: #e8c55a; --med-bg: #342c10;
+  --low: #8bb6ef; --low-bg: #16263b; --ok: #4cc2a2; --ok-bg: #173129; --muted-bg: #1d2824;
+  --add-bg: #12301f; --add-ink: #9be3b5; --del-bg: #3a1714; --del-ink: #ffb4ab;
+  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+}

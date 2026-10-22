@@ -8,7 +8,7 @@
 #   ADMIN_EMAIL       protected            first administrator account
 #   ADMIN_PASSWORD    masked + protected   10+ characters
 # Optional: PROJECT_SERVICE_URL, SCAN_SERVICE_URL, AI_SERVICE_URL, REPORTING_SERVICE_URL (e.g. http://10.10.1.3:8001),
-#   PUBLIC_BASE_URL, SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM, DAILY_ASSESSMENT_LIMIT, GATEWAY_ROUTES
+#   PUBLIC_BASE_URL (use the web app's address, e.g. http://worker1:8080), WEB_APP_URL, MAX_BODY_MB, SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM, DAILY_ASSESSMENT_LIMIT, GATEWAY_ROUTES
 
 variables:
   GW_DIR: services/gateway

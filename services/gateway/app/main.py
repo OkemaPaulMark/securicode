@@ -8,9 +8,10 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select, text
 
-from . import admin_routes, auth_routes, internal_routes, proxy
+from . import admin_routes, auth_routes, internal_routes, pages, proxy
 from .config import Settings
 from .db import User, make_sessionmaker
 from .security import hash_password
@@ -51,6 +52,10 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     @app.get("/health", tags=["ops"])
     def health():
         return {"status": "ok", "service": "gateway", "version": VERSION}
+
+    @app.get("/", include_in_schema=False, response_class=HTMLResponse)
+    def home():
+        return HTMLResponse(pages.home(VERSION, settings.web_app_url), headers=pages.SECURITY_HEADERS)
 
     @app.get("/ready", tags=["ops"])
     def ready():

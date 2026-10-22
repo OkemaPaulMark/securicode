@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+# pinned dependencies are needed by npm ci in the Dockerfile (the root .gitignore excludes lockfiles)
+!package-lock.json
