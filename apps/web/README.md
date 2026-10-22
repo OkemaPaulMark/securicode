@@ -54,11 +54,12 @@ on port 8080). nginx serves the app and forwards `/api/*`, `/auth/*`, `/docs` an
 so the browser only ever talks to one origin. It sets a strict Content-Security-Policy (no inline scripts, no third
 party origins), `X-Frame-Options: DENY`, `nosniff`, and allows 100 MB uploads (CI-4).
 
-GitLab pipeline (`apps/web/.gitlab-ci.yml`, included from the root file), same pattern as the gateway:
+GitLab pipeline (`apps/web/.gitlab-ci.yml`, included from the root file), same model as the gateway (Lab 1):
 
-1. `web:test`: type check and unit tests inside `docker build --target test` on worker1.
-2. `web:build`: image `securicode/web:<short SHA>`.
-3. `web:deploy`: runs `securicode-web` on worker1:8080, waits for the HEALTHCHECK, checks that `/signin` loads and
+1. `web:test`: type check and unit tests inside `docker build --target test` on the runner.
+2. `web:build`: pushes `$CI_REGISTRY_IMAGE/web:<short SHA>` to the GitLab registry.
+3. `web:deploy`: `docker compose -p securicode-web -f apps/web/deploy/compose.yml up` on worker1 through
+   `DOCKER_HOST=ssh://gitlab-runner@worker1`, waits for the HEALTHCHECK, checks that `/signin` loads and
    `/api/auth/me/` reaches the gateway, and rolls back automatically if either fails.
 4. `web:rollback`: manual.
 

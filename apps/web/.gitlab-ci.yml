@@ -1,17 +1,16 @@
-# Web app pipeline. Included from the root .gitlab-ci.yml.
-# Jobs are prefixed web: and variables WEB_ so they never clash with the services.
-# No secrets are needed: the web app is static files plus an nginx proxy to the gateway.
+# Web app pipeline. Included from the root .gitlab-ci.yml. Same model as services/gateway/.gitlab-ci.yml:
+# test on the runner, push the image to the GitLab registry, deploy on the worker with Docker Compose over SSH.
+# No secrets needed: the web app is static files plus an nginx proxy to the gateway.
 # Optional CI/CD variables: WEB_GATEWAY_URL (default http://host.docker.internal:8000, the gateway on the same worker)
 
 variables:
   WEB_DIR: apps/web
-  WEB_IMAGE: securicode/web
   WEB_CONTAINER: securicode-web
   WEB_HOST: worker1
   WEB_PORT: "8080"
 
 .web-base:
-  # tags: [cloudlab-runner-23]   # uncomment if the runner does not run untagged jobs
+  tags: [docker]
   before_script:
     - chmod +x "$WEB_DIR/ci/ci.sh"
 
@@ -24,7 +23,7 @@ variables:
 
 .web-on-main:
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
       changes: [apps/web/**/*]
 
 web:test:
@@ -38,7 +37,7 @@ web:build:
   stage: build
   needs: ["web:test"]
   script:
-    - "$WEB_DIR/ci/ci.sh build"         # image securicode/web:<commit short SHA> on worker1
+    - "$WEB_DIR/ci/ci.sh build"         # pushes $CI_REGISTRY_IMAGE/web:<short sha>
 
 web:deploy:
   extends: [.web-base, .web-on-main]
@@ -49,7 +48,7 @@ web:deploy:
     name: web
     url: http://$WEB_HOST:$WEB_PORT/
   script:
-    - "$WEB_DIR/ci/ci.sh deploy"        # waits for HEALTHCHECK + smoke test, auto-rolls back on failure
+    - "$WEB_DIR/ci/ci.sh deploy"        # HEALTHCHECK + smoke test, auto-rolls back on failure
     - "$WEB_DIR/ci/ci.sh status"
 
 web:rollback:
@@ -60,7 +59,7 @@ web:rollback:
   environment:
     name: web
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "musheijaa"'
       changes: [apps/web/**/*]
       when: manual
   allow_failure: true

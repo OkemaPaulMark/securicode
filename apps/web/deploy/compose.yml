@@ -1,0 +1,16 @@
+# Web app on the worker. Deployed by apps/web/ci/ci.sh with DOCKER_HOST=ssh://gitlab-runner@<worker>.
+# Separate compose project (securicode-web) so it never touches the gateway's deploy/compose.<worker>.yml.
+services:
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE is set by ci.sh}
+    container_name: ${WEB_CONTAINER:-securicode-web}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    environment:
+      # The gateway publishes its port on the same worker; reach it through the Docker host.
+      GATEWAY_URL: ${WEB_GATEWAY_URL:-http://host.docker.internal:8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      service: securicode-web
