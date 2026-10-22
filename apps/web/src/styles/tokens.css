@@ -1,66 +1,81 @@
 /* Securicode design tokens. One source of truth for colour, type and spacing.
-   Severity colours always travel with a text label and a shape (SRS 3.1: never colour alone). */
+   Cobalt is the brand: actions, current location, focus and the funnel. Cool slate greys carry everything else.
+   Severity colours always travel with a text label and a shape (SRS 3.1: never colour alone).
+   Light is the default; dark applies only when chosen with the toggle. */
 :root {
   color-scheme: light;
-  --paper: #f3f5f4;
+  --canvas: #eef2f8;
+  --paper: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #eaefed;
-  --ink: #16201c;
-  --ink-2: #4a5752;
-  --ink-3: #6b7873;
-  --line: #d5dcd9;
-  --line-strong: #b7c2be;
-  --accent: #0b6b57;
-  --accent-hover: #095846;
-  --accent-tint: #e3f1ec;
+  --surface-2: #f1f5f9;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #5d6b80;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --accent: #1f57e0;
+  --accent-hover: #1847c0;
+  --accent-ink: #1a4bc4;
+  --accent-tint: #e9effd;
+  --accent-soft: #c9d8fb;
+  --primary: #1f57e0;
+  --primary-hover: #1847c0;
+  --on-primary: #ffffff;
   --on-accent: #ffffff;
-  --focus: #1d5fd6;
+  --focus: #1f57e0;
 
-  --crit: #a61b1b;  --crit-bg: #fbe9e7;
-  --high: #b4530a;  --high-bg: #fcefe3;
-  --med: #7d6000;   --med-bg: #faf3d9;
-  --low: #2f5f96;   --low-bg: #e7eef7;
-  --ok: #0b6b57;    --ok-bg: #e3f1ec;
-  --muted-bg: #edf0ef;
+  --crit: #b91c1c;  --crit-bg: #fef2f2;
+  --high: #c2410c;  --high-bg: #fff7ed;
+  --med: #a16207;   --med-bg: #fefce8;
+  --low: #3e5bb0;   --low-bg: #eff4ff;
+  --ok: #047857;    --ok-bg: #ecfdf5;
+  --muted-bg: #edf1f6;
 
-  --add-bg: #e6f4ea; --add-ink: #0f5132; --del-bg: #fdecea; --del-ink: #8a1c1c;
+  --add-bg: #e6ffec; --add-ink: #116329; --del-bg: #ffebe9; --del-ink: #82071e;
 
-  --font-ui: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Project badges: a soft tint and a readable ink per hue, picked by project name. */
+  --tag-1-bg: #e0e9ff; --tag-1: #1e40af;
+  --tag-2-bg: #d9f5ea; --tag-2: #047857;
+  --tag-3-bg: #f3e3fa; --tag-3: #7c2d92;
+  --tag-4-bg: #fde8d7; --tag-4: #9a3412;
+  --tag-5-bg: #d8f3f8; --tag-5: #0e7490;
+  --tag-6-bg: #fdf3c9; --tag-6: #855005;
+
+  --font-ui: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-code: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --t-xs: 0.8125rem;  /* 13 */
-  --t-sm: 0.875rem;   /* 14 */
-  --t-md: 0.9375rem;  /* 15 body */
-  --t-lg: 1.0625rem;  /* 17 */
-  --t-xl: 1.3125rem;  /* 21 */
-  --t-2xl: 1.75rem;   /* 28 */
-  --t-3xl: 2.5rem;    /* 40 */
+  --t-xs: 0.75rem;    /* 12 */
+  --t-sm: 0.8125rem;  /* 13 */
+  --t-md: 0.875rem;   /* 14 body */
+  --t-lg: 1rem;       /* 16 */
+  --t-xl: 1.125rem;   /* 18 */
+  --t-2xl: 1.5rem;    /* 24 */
+  --t-3xl: 2rem;      /* 32 */
 
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
-  --r-sm: 4px; --r-md: 8px; --r-lg: 14px;
-  --shadow-pop: 0 12px 32px -8px rgba(22, 32, 28, 0.28), 0 2px 6px rgba(22, 32, 28, 0.08);
-  --sidebar: 248px;
+  --r-sm: 4px; --r-md: 6px; --r-lg: 10px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-raise: 0 0 0 1px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-pop: 0 18px 44px -14px rgba(15, 23, 42, 0.25), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --sidebar: 232px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --paper: #0e1513; --surface: #151e1b; --surface-2: #1b2622; --ink: #e3eae7; --ink-2: #a3b0ab; --ink-3: #82908a;
-    --line: #26332e; --line-strong: #364640; --accent: #4cc2a2; --accent-hover: #6fd3b7; --accent-tint: #173129;
-    --on-accent: #06231b; --focus: #7aa7ff;
-    --crit: #ff8a80; --crit-bg: #3a1714; --high: #ffb067; --high-bg: #3a2412; --med: #e8c55a; --med-bg: #342c10;
-    --low: #8bb6ef; --low-bg: #16263b; --ok: #4cc2a2; --ok-bg: #173129; --muted-bg: #1d2824;
-    --add-bg: #12301f; --add-ink: #9be3b5; --del-bg: #3a1714; --del-ink: #ffb4ab;
-    --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
-  }
-}
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #0e1513; --surface: #151e1b; --surface-2: #1b2622; --ink: #e3eae7; --ink-2: #a3b0ab; --ink-3: #82908a;
-  --line: #26332e; --line-strong: #364640; --accent: #4cc2a2; --accent-hover: #6fd3b7; --accent-tint: #173129;
-  --on-accent: #06231b; --focus: #7aa7ff;
-  --crit: #ff8a80; --crit-bg: #3a1714; --high: #ffb067; --high-bg: #3a2412; --med: #e8c55a; --med-bg: #342c10;
-  --low: #8bb6ef; --low-bg: #16263b; --ok: #4cc2a2; --ok-bg: #173129; --muted-bg: #1d2824;
-  --add-bg: #12301f; --add-ink: #9be3b5; --del-bg: #3a1714; --del-ink: #ffb4ab;
-  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --canvas: #0b1120; --paper: #0f1626; --surface: #121a2b; --surface-2: #19233a; --ink: #e2e8f0; --ink-2: #94a3b8; --ink-3: #7d8aa0;
+  --line: #1f2a40; --line-strong: #2c3a55; --accent: #7b9cf7; --accent-hover: #9bb5fa; --accent-ink: #9bb5fa;
+  --accent-tint: #1a2645; --accent-soft: #2a3d6e;
+  --primary: #3d6ae8; --primary-hover: #5580ef; --on-primary: #ffffff; --on-accent: #0b1120; --focus: #7b9cf7;
+  --crit: #f87171; --crit-bg: #2c1519; --high: #fb923c; --high-bg: #2c1a12; --med: #eab308; --med-bg: #29220f;
+  --low: #8aa4f0; --low-bg: #18213a; --ok: #34d399; --ok-bg: #0f2a24; --muted-bg: #1a2338;
+  --add-bg: #10301f; --add-ink: #8ddba8; --del-bg: #331820; --del-ink: #ffaba8;
+  --tag-1-bg: #1c2a52; --tag-1: #a9c0fa;
+  --tag-2-bg: #12322a; --tag-2: #7ee0b8;
+  --tag-3-bg: #2f1d3b; --tag-3: #dfb0f0;
+  --tag-4-bg: #35200f; --tag-4: #f8b98a;
+  --tag-5-bg: #0f2f38; --tag-5: #7fd6e8;
+  --tag-6-bg: #322a0e; --tag-6: #f0cf6a;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-raise: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 18px 44px -14px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.35);
 }

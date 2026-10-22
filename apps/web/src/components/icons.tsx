@@ -12,11 +12,11 @@ function Svg({ size = 18, children, ...rest }: P & { children: React.ReactNode }
   );
 }
 
-export const Logo = ({ size = 28 }: { size?: number }) => (
+export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-    <rect width="32" height="32" rx="8" fill="var(--accent)" />
-    <path d="M12 9.5 7.5 16l4.5 6.5M20 9.5l4.5 6.5-4.5 6.5" fill="none" stroke="var(--on-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="m13 16.4 2.2 2.2 4-4.6" fill="none" stroke="var(--on-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <rect width="32" height="32" rx="7" fill="var(--primary)" />
+    <path d="M12 9.5 7.5 16l4.5 6.5M20 9.5l4.5 6.5-4.5 6.5" fill="none" stroke="var(--on-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="m13 16.4 2.2 2.2 4-4.6" fill="none" stroke="var(--on-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 

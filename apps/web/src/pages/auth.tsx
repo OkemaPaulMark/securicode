@@ -10,7 +10,7 @@ function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth">
       <div className="auth-form-side">
-        <Link to="/" className="brand" style={{ marginBottom: 48 }}><Logo />Securicode</Link>
+        <Link to="/" className="brand"><Logo />Securicode</Link>
         <div className="auth-card">{children}</div>
       </div>
       <Story />
@@ -109,17 +109,13 @@ export function SignIn() {
         <Field label="E-mail">
           <input className="input" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
         </Field>
-        <Field label="Password">
+        <Field label="Password" hint={<Link to="/forgot-password">Forgot your password?</Link>}>
           <input className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <button className="btn btn-primary btn-block" disabled={busy}>{busy && <span className="spinner" aria-hidden="true" />}Sign in</button>
-        <div className="auth-alt" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <Link to="/forgot-password">Forgot your password?</Link>
-          <span>New here? <Link to="/register">Create an account</Link></span>
-        </div>
-        <div className="auth-alt">
-          No account yet and just looking? <button type="button" className="btn btn-sm btn-ghost" style={{ padding: 0, color: "var(--accent)" }} onClick={demo}>Explore with sample data</button>
-        </div>
+        <div className="auth-divider">or</div>
+        <button type="button" className="btn btn-block" onClick={demo}>Explore with sample data</button>
+        <p className="auth-alt">New here? <Link to="/register">Create an account</Link></p>
       </form>
     </AuthLayout>
   );

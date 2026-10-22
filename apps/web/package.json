@@ -2,7 +2,7 @@
   "name": "@securicode/web",
   "private": true,
   "version": "1.0.0",
-  "description": "Securicode web application \u2014 browser client for the API Gateway",
+  "description": "Securicode web application — browser client for the API Gateway",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,8 +13,8 @@
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "5.2.8",
     "@fontsource/ibm-plex-mono": "5.1.0",
-    "@fontsource/schibsted-grotesk": "5.1.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "7.18.4"

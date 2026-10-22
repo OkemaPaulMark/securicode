@@ -55,8 +55,7 @@ function Shell() {
   }, []);
 
   const toggleTheme = () => {
-    const dark = theme === "dark" || (theme === "system" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-    const next: Theme = dark ? "light" : "dark";
+    const next: Theme = theme === "dark" ? "light" : "dark";
     applyTheme(next);
     setTheme(next);
   };
@@ -74,7 +73,8 @@ function Shell() {
   };
 
   const topic = helpFor(loc.pathname);
-  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+  // Light unless the person chose dark: the system preference no longer switches the theme on its own.
+  const isDark = theme === "dark";
 
   return (
     <div className="shell">

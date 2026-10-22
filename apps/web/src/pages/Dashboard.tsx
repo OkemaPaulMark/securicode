@@ -6,7 +6,7 @@ import { ConnectRepoDialog, UploadZipDialog } from "../components/NewAssessment"
 import { Empty, ErrorNote, Loading, SeverityBar, SeverityCountsView, StateChip, useAsync, usePolling } from "../components/ui";
 import type { Project } from "../api/types";
 import { ago, isActive, SOURCE_LABEL, total } from "../lib/format";
-import { usePage, useSession } from "../lib/session";
+import { usePage } from "../lib/session";
 
 export function SourceTag({ p }: { p: Pick<Project, "source_type" | "repo_url" | "branch"> }) {
   const icon = p.source_type === "github" ? <IconGithub /> : p.source_type === "gitlab" ? <IconGitlab /> : <IconUpload size={14} />;
@@ -20,8 +20,14 @@ export function SourceTag({ p }: { p: Pick<Project, "source_type" | "repo_url" |
   );
 }
 
+/** A stable badge colour (1–6) per project name, so each project is recognisable at a glance. */
+function toneFor(name: string): number {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (h % 6) + 1;
+}
+
 export function Dashboard() {
-  const { user } = useSession();
   usePage("Projects");
   const nav = useNavigate();
   const [zip, setZip] = useState(false);
@@ -33,13 +39,12 @@ export function Dashboard() {
 
   const open = list.reduce((n, p) => n + (p.latest_assessment ? total(p.latest_assessment.counts) : 0), 0);
   const urgent = list.reduce((n, p) => n + (p.latest_assessment ? p.latest_assessment.counts.critical + p.latest_assessment.counts.high : 0), 0);
-  const first = user?.name.split(" ")[0];
 
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>{first ? `Hello, ${first}` : "Projects"}</h1>
+          <h1>Projects</h1>
           <p>Each project keeps its full history of assessments. Start with a ZIP of your code or a link to its repository.</p>
         </div>
         <div className="actions">
@@ -61,7 +66,7 @@ export function Dashboard() {
           </dl>
 
           <section className="panel" aria-labelledby="projects-h">
-            <div className="panel-head"><h2 id="projects-h" style={{ fontSize: "var(--t-lg)" }}>Your projects</h2></div>
+            <h2 id="projects-h" className="sr-only">Your projects</h2>
             <div className="table-wrap">
               <table className="table table-stack">
                 <thead>
@@ -78,8 +83,13 @@ export function Dashboard() {
                     return (
                       <tr key={p.id} data-link onClick={(e) => { if (!(e.target as HTMLElement).closest("a")) nav(`/projects/${p.id}`); }}>
                         <td>
-                          <Link className="proj-name" to={`/projects/${p.id}`}>{p.name}</Link>
-                          <div><SourceTag p={p} /></div>
+                          <div className="proj">
+                            <span className="proj-mark" data-tone={toneFor(p.name)} aria-hidden="true">{p.name.slice(0, 2)}</span>
+                            <div>
+                              <Link className="proj-name" to={`/projects/${p.id}`}>{p.name}</Link>
+                              <div><SourceTag p={p} /></div>
+                            </div>
+                          </div>
                         </td>
                         <td>
                           {a ? (
